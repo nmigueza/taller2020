@@ -1,5 +1,5 @@
 ---
-- hosts: centos,localhost
+- hosts: webserver
   remote_user: ansible
   become: yes
   become_method: sudo
@@ -13,34 +13,22 @@
     server: www.ejemplo.com.uy
     hostmaster: admin@ejemplo.com.uy
 
-  tasks:
-  - name: Install LAMP software in Centos
-    yum:
-      name: "{{ packages }}"
-      state: latest
-    when: ansible_facts['distribution'] == "CentOS"   
+  roles: 
+    - role: apache-centos
+      when: ansible_facts['os_family'] == "RedHat" 
 
+    - role: apache-ubuntu
+      when: ansible_facts['os_family'] == "Debian"
+
+
+  tasks:   
   - name: Install Lamp software in Ubuntu
     apt:
       pkg:
-      - apache2
       - php
       - mariadb-server
     when: ansible_facts['distribution'] == "Ubuntu"
 
-  - name: Create virtualhost config directory Centos
-    file:
-      path: /etc/httpd/vhost.d
-      state: directory
-      mode: '0755'
-      owner: root
-    when: ansible_facts['distribution'] == "CentOS"
-
-  - name: Add virtualhost config directory to httpd.conf
-    lineinfile:
-      path: /etc/httpd/conf/httpd.conf
-      line: IncludeOptional vhost.d/*.conf
-    when: ansible_facts['distribution'] == "CentOS"
 
   - name: Create virtualhost config directory Ubuntu
     file:
@@ -83,11 +71,9 @@
       state: started
       enabled: yes
     loop:
-      - httpd
       - mariadb
     when: ansible_facts['distribution'] == "CentOS"
     loop:
-      - apache2
       - mariadb
     when: ansible_facts['distribution'] == "Ubuntu"
 
@@ -98,17 +84,8 @@
       permanent: yes
       immediate: yes
     loop:
-      - http
       - mysql
     when: ansible_facts['distribution'] == "CentOS"
-
-
-  - name: Configure firewall apache Ubuntu
-    ufw:
-      rule: allow
-      port: '80'
-      proto: tcp
-    when: ansible_facts['distribution'] == "Ubuntu"
 
   - name: Configure firewall mysql Ubuntu
     ufw:
@@ -117,9 +94,3 @@
       proto: tcp
     when: ansible_facts['distribution'] == "Ubuntu"
 
-  handlers:
-  - name: Restart httpd
-    service:
-      name: httpd
-      state: restarted
-      enabled: yes

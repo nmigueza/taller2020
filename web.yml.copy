@@ -1,0 +1,55 @@
+---
+- hosts: webserver
+  remote_user: ansible
+  become: yes
+  become_method: sudo
+  vars:
+    packages:
+      - php
+    sitio: ejemplo
+    server: www.ejemplo.com.uy
+    hostmaster: admin@ejemplo.com.uy
+
+  roles: 
+    - role: apache-centos
+      when: ansible_facts['os_family'] == "RedHat" 
+
+    - role: apache-ubuntu
+      when: ansible_facts['os_family'] == "Debian"
+
+    - role: install-mariadb
+
+  tasks:   
+  - name: Install Lamp software in Ubuntu
+    apt:
+      pkg:
+      - php
+    when: ansible_facts['distribution'] == "Ubuntu"
+
+  - name: Install Lamp software in Centos
+    yum:
+     name: php
+    when: ansible_facts['distribution'] == "CentOS"
+
+  - name: Create virtualhost content directories
+    file: 
+      path: "{{ item }}"
+      recurse: yes
+      state: directory
+      owner: apache
+      group: apache
+      mode: '0755'
+    loop:
+      - /var/www/{{ sitio }}
+      - /var/www/{{ sitio }}/html
+      - /var/www/{{ sitio }}/cgi-bin
+
+  - name: Create virtualhost configuration
+    template:
+      src: templates/{{ sitio }}.j2
+      dest: /etc/httpd/vhost.d/{{ sitio }}.conf
+      owner: root
+      mode: '0644'
+    notify: Restart httpd
+
+

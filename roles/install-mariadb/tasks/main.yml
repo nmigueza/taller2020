@@ -1,38 +1,48 @@
 ---
 # tasks file for roles/apache-centos
-- name: Install Apache Server
+- name: Install MariaDB RedHat
   yum:
-    name: httpd
+    name:  "{{ item }}"
     state: latest
+  loop:
+    - mariadb
+    - mariadb-server
+  when: ansible_facts['os_family'] == "RedHat"
 
-- name: Create virtualhost config directory 
-  file:
-    path: /etc/httpd/vhost.d
-    state: directory
-    mode: '0755'
-    owner: root
+- name: Install MariaDB Debian
+  apt:
+    name:  "{{ item }}"
+    state: latest
+  loop:
+    - mariadb-client
+    - mariadb-server
+  when: ansible_facts['os_family'] == "Debian"
 
-- name: Add virtualhost config directory to httpd.conf
-  lineinfile:
-    path: /etc/httpd/conf/httpd.conf
-    line: IncludeOptional vhost.d/*.conf
 
-- name: Start and enable services
+- name: Start and enable service
   service:
-    name: httpd
+    name: mariadb
     state: started
     enabled: yes
 
 
-- name: Configure firewall 
+- name: Configure firewall RedHat
   firewalld:
-    service: "{{ item }}"
+    service: mysql
     state: enabled
     permanent: yes
     immediate: yes
-  loop:
-    - http
-    - https
+  when: ansible_facts['os_family'] == "RedHat"
+
+
+- name: Configure firewall Debian
+  ufw:
+    rule: allow
+    port: '3306'
+    proto: tcp
+    state: enabled
+  when: ansible_facts['os_family'] == "Debian"
+
 
 
 
